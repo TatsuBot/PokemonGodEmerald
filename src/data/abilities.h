@@ -2556,4 +2556,14 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
         .name = _("Aura Guard"),
         .description = COMPOUND_STRING("Unimplemented."),
     },
+
+    [ABILITY_GOD_III] =
+    {
+        .name = _("God III"),
+        .description = COMPOUND_STRING("Has every Gen 3 ability."),
+        .aiRating = 10,
+        .cantBeCopied = TRUE,
+        .cantBeSwapped = TRUE,
+        .cantBeTraced = TRUE,
+    },
 };
