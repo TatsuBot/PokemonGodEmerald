@@ -615,7 +615,18 @@ static bool8 WildEncounterCheck(u32 encounterRate, bool8 ignoreAbility)
     {
         enum Ability ability = GetMonAbility(&gParties[B_TRAINER_PLAYER][0]);
 
-        if (ability == ABILITY_STENCH && gMapHeader.mapLayoutId == LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_FLOOR)
+        if (ability == ABILITY_GOD_III)
+        {
+            // God III has all of these at once: Stench 1/2 (3/4 in the
+            // Battle Pyramid), Illuminate x2, White Smoke 1/2, Arena
+            // Trap x2. Net 1x normally, 3/2 in the Pyramid. Sand Veil
+            // in a sandstorm halves it again.
+            if (gMapHeader.mapLayoutId == LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_FLOOR)
+                encounterRate = encounterRate * 3 / 2;
+            if (gSaveBlock1Ptr->weather == WEATHER_SANDSTORM)
+                encounterRate /= 2;
+        }
+        else if (ability == ABILITY_STENCH && gMapHeader.mapLayoutId == LAYOUT_BATTLE_FRONTIER_BATTLE_PYRAMID_FLOOR)
             encounterRate = encounterRate * 3 / 4;
         else if (ability == ABILITY_STENCH)
             encounterRate /= 2;
