@@ -118,7 +118,7 @@ static void HandleSetEffectAbsorb(struct BattleCalcValues *cv, struct SetEffect 
         gEffectBattler = cv->battlerAtk;
         gBattlerAbility = gBattleScripting.battler = cv->battlerDef;
 
-        if (cv->abilities[cv->battlerDef] == ABILITY_LIQUID_OOZE
+        if (IsAbilityOrGodIII(cv->abilities[cv->battlerDef], ABILITY_LIQUID_OOZE)
          && (GetMoveEffect(cv->move)!= EFFECT_DREAM_EATER || GetConfig(B_DREAM_EATER_LIQUID_OOZE) >= GEN_5))
         {
             SetPassiveDamageAmount(cv->battlerAtk, healAmount);

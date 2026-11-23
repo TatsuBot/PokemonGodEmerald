@@ -2392,7 +2392,7 @@ static int GetTypeEffectivenessPoints(enum Move move, enum Species targetSpecies
     defAbility = GetSpeciesAbility(targetSpecies, 0);
     moveType = GetMoveType(move);
 
-    if ((defAbility == ABILITY_LEVITATE || defAbility == ABILITY_EELEVATE) && moveType == TYPE_GROUND)
+    if ((defAbility == ABILITY_LEVITATE || defAbility == ABILITY_EELEVATE || defAbility == ABILITY_GOD_III) && moveType == TYPE_GROUND)
     {
         // They likely meant to return here, as 8 is the number of points normally used in this mode for moves with no effect.
         // Because there's no return the value instead gets interpreted by the switch, and the number of points becomes 0.
@@ -2413,7 +2413,7 @@ static int GetTypeEffectivenessPoints(enum Move move, enum Species targetSpecies
         if (defType2 != defType1)
             typePower = (typeEffectiveness2 * typePower) / 10;
 
-        if (defAbility == ABILITY_WONDER_GUARD && typeEffectiveness1 != TYPE_x1 && typeEffectiveness2 != TYPE_x1)
+        if ((defAbility == ABILITY_WONDER_GUARD || defAbility == ABILITY_GOD_III) && typeEffectiveness1 != TYPE_x1 && typeEffectiveness2 != TYPE_x1)
             typePower = 0;
     }
 

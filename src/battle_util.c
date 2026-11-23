@@ -672,7 +672,7 @@ bool32 TryRunFromBattle(enum BattlerId battler)
     {
         effect = TRUE;
     }
-    else if (GetBattlerAbility(battler) == ABILITY_RUN_AWAY)
+    else if (IsAbilityOrGodIII(GetBattlerAbility(battler), ABILITY_RUN_AWAY))
     {
         if (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE)
         {
@@ -781,7 +781,7 @@ void HandleAction_Run(void)
         else
         {
             if (GetBattlerHoldEffect(gBattlerAttacker) != HOLD_EFFECT_CAN_ALWAYS_RUN
-             && GetBattlerAbility(gBattlerAttacker) != ABILITY_RUN_AWAY
+             && !IsAbilityOrGodIII(GetBattlerAbility(gBattlerAttacker), ABILITY_RUN_AWAY)
              && !CanBattlerEscape(gBattlerAttacker))
             {
                 gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_ATTACKER_CANT_ESCAPE;
@@ -3773,11 +3773,62 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 // God III has Speed Boost (end of turn, +1 Speed)
                 // and Truant (toggle loafing counter each turn)
                 gBattleMons[gBattlerAttacker].volatiles.truantCounter ^= 1;
+                // Speed Boost takes priority: only one script runs per
+                // end turn, so it goes first. Shed Skin / Pickup /
+                // Rain Dish only run once Speed is maxed, or on the
+                // turn God just switched in.
                 if (CompareStat(battler, STAT_SPEED, MAX_STAT_STAGE, CMP_LESS_THAN, gLastUsedAbility) && !BattlerJustSwitchedIn(battler))
                 {
                     gEffectBattler = gBattlerAbility = battler;
                     SetStatChange(battler, STAT_SPEED, 1);
                     BattleScriptCall(BattleScript_AbilityStatChange);
+                    effect++;
+                }
+                // Shed Skin: 1/3 chance to cure status
+                else if ((gBattleMons[battler].status1 & STATUS1_ANY)
+                 && (GetConfig(B_ABILITY_TRIGGER_CHANCE) == GEN_4 ? RandomPercentage(RNG_SHED_SKIN, 30) : RandomChance(RNG_SHED_SKIN, 1, 3)))
+                {
+                    if (gBattleMons[battler].status1 & (STATUS1_POISON | STATUS1_TOXIC_POISON))
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_POISON;
+                    if (gBattleMons[battler].status1 & STATUS1_SLEEP)
+                    {
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_SLEEP;
+                        TryDeactivateSleepClause(battler, gBattlerPartyIndexes[battler]);
+                    }
+                    if (gBattleMons[battler].status1 & STATUS1_PARALYSIS)
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_PARALYSIS;
+                    if (gBattleMons[battler].status1 & STATUS1_BURN)
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_BURN;
+                    if (gBattleMons[battler].status1 & STATUS1_FREEZE)
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_FREEZE;
+                    if (gBattleMons[battler].status1 & STATUS1_FROSTBITE)
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_FROSTBITE;
+
+                    gBattleMons[battler].status1 = 0;
+                    gBattleMons[battler].volatiles.nightmare = FALSE;
+                    gBattleScripting.battler = battler;
+                    BattleScriptCall(BattleScript_ShedSkinActivates);
+                    BtlController_EmitSetMonData(battler, B_COMM_TO_CONTROLLER, REQUEST_STATUS_BATTLE, 0, 4, &gBattleMons[battler].status1);
+                    MarkBattlerForControllerExec(battler);
+                    effect++;
+                }
+                // Pickup: take a used item if holding none
+                else if (gBattleMons[battler].item == ITEM_NONE
+                 && PickupHasValidTarget(battler))
+                {
+                    gBattlerTarget = RandomUniformExcept(RNG_PICKUP, 0, gBattlersCount - 1, CantPickupItem);
+                    gLastUsedItem = GetBattlerPartyState(gBattlerTarget)->usedHeldItem;
+                    BattleScriptCall(BattleScript_PickupActivates);
+                    effect++;
+                }
+                // Rain Dish: heal 1/16 in rain (rare for God, Air Lock
+                // suppresses weather while God is on field)
+                else if (IsBattlerWeatherAffected(GetBattlerHoldEffect(battler), GetWeather(), B_WEATHER_RAIN)
+                 && !IsBattlerAtMaxHp(battler)
+                 && !gBattleMons[battler].volatiles.healBlockTimer)
+                {
+                    SetHealAmount(battler, GetNonDynamaxMaxHP(battler) / 16);
+                    BattleScriptCall(BattleScript_AbilityHpHeal);
                     effect++;
                 }
                 break;
@@ -4588,6 +4639,18 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 effect++;
             }
             break;
+        case ABILITY_GOD_III:
+            // Stench: 10% flinch on a damaging move (MOVE_END_ATTACKER)
+            if (IsBattlerAlive(gBattlerTarget)
+             && !gBattleStruct->unableToUseMove
+             && RandomChance(RNG_STENCH, 1, 10)
+             && IsBattlerTurnDamaged(gBattlerTarget, EXCLUDING_SUBSTITUTES)
+             && !MoveHasAdditionalEffect(gCurrentMove, MOVE_EFFECT_FLINCH))
+            {
+                SetMoveEffectHelper(gBattlerAttacker, gBattlerTarget, MOVE_EFFECT_FLINCH, gBattlescriptCurrInstr, NO_FLAGS);
+                effect++;
+            }
+            break;
         case ABILITY_POISON_PUPPETEER:
             if (IsRestrictedAbility(gBattlerAttacker, ABILITY_POISON_PUPPETEER)
              && gSpecialStatuses[gBattlerTarget].poisonPuppeteer)
@@ -4715,7 +4778,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                     if (!(magicianTargets & 1u << targetBattler))
                         continue;
 
-                    if (GetBattlerAbility(targetBattler) == ABILITY_STICKY_HOLD)
+                    if (IsAbilityOrGodIII(GetBattlerAbility(targetBattler), ABILITY_STICKY_HOLD))
                     {
                         effect = FALSE;
                         break;
@@ -5160,7 +5223,7 @@ u32 IsAbilityOnField(enum Ability ability)
 {
     for (enum BattlerId i = 0; i < gBattlersCount; i++)
     {
-        if (IsBattlerAlive(i) && GetBattlerAbility(i) == ability)
+        if (IsBattlerAlive(i) && IsAbilityOrGodIII(GetBattlerAbility(i), ability))
             return i + 1;
     }
 
@@ -5180,13 +5243,13 @@ u32 IsAbilityPreventingEscape(enum BattlerId battler)
 
         enum Ability ability = GetBattlerAbility(battlerDef);
 
-        if (ability == ABILITY_SHADOW_TAG && (B_SHADOW_TAG_ESCAPE <= GEN_3 || GetBattlerAbility(battler) != ABILITY_SHADOW_TAG))
+        if (IsAbilityOrGodIII(ability, ABILITY_SHADOW_TAG) && (B_SHADOW_TAG_ESCAPE <= GEN_3 || !IsAbilityOrGodIII(GetBattlerAbility(battler), ABILITY_SHADOW_TAG)))
             return battlerDef + 1;
 
-        if (ability == ABILITY_ARENA_TRAP && isBattlerGrounded)
+        if (IsAbilityOrGodIII(ability, ABILITY_ARENA_TRAP) && isBattlerGrounded)
             return battlerDef + 1;
 
-        if (ability == ABILITY_MAGNET_PULL && IS_BATTLER_OF_TYPE(battler, TYPE_STEEL))
+        if (IsAbilityOrGodIII(ability, ABILITY_MAGNET_PULL) && IS_BATTLER_OF_TYPE(battler, TYPE_STEEL))
             return battlerDef + 1;
     }
 
@@ -7272,6 +7335,11 @@ static inline u32 CalcAttackStat(struct DamageContext *ctx)
                 RecordAbilityBattle(battlerDef, ABILITY_THICK_FAT);
         }
         break;
+    case ABILITY_GOD_III:
+        // Thick Fat: Fire / Ice damage halved
+        if (moveType == TYPE_FIRE || moveType == TYPE_ICE)
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(0.5));
+        break;
     case ABILITY_PURIFYING_SALT:
         if (moveType == TYPE_GHOST)
         {
@@ -8191,7 +8259,7 @@ s32 CalcCritChanceStage(struct DamageContext *ctx)
             critChance = ARRAY_COUNT(sCriticalHitOdds) - 1;
     }
 
-    if (critChance != CRITICAL_HIT_BLOCKED && (ctx->abilities[ctx->battlerDef] == ABILITY_BATTLE_ARMOR || ctx->abilities[ctx->battlerDef] == ABILITY_SHELL_ARMOR))
+    if (critChance != CRITICAL_HIT_BLOCKED && (IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_BATTLE_ARMOR) || IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_SHELL_ARMOR)))
     {
         // Record ability only if move had 100% chance to get a crit
         if (ctx->updateFlags)
@@ -8243,7 +8311,7 @@ s32 CalcCritChanceStageGen1(struct DamageContext *ctx)
     if (critChance > 255)
         critChance = 255;
 
-    if (ctx->abilities[ctx->battlerDef] == ABILITY_BATTLE_ARMOR || ctx->abilities[ctx->battlerDef] == ABILITY_SHELL_ARMOR)
+    if (IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_BATTLE_ARMOR) || IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_SHELL_ARMOR))
     {
         if (ctx->updateFlags)
             RecordAbilityBattle(ctx->battlerDef, ctx->abilities[ctx->battlerDef]);
@@ -8321,7 +8389,7 @@ s32 GetAdjustedDamage(struct DamageContext *ctx, s32 damage)
     {
         enduredHit = TRUE;
     }
-    else if (GetConfig(B_STURDY) >= GEN_5 && ctx->abilities[ctx->battlerDef] == ABILITY_STURDY && IsBattlerAtMaxHp(ctx->battlerDef))
+    else if (GetConfig(B_STURDY) >= GEN_5 && IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_STURDY) && IsBattlerAtMaxHp(ctx->battlerDef))
     {
         enduredHit = TRUE;
         RecordAbilityBattle(ctx->battlerDef, ABILITY_STURDY);
@@ -10316,7 +10384,7 @@ bool32 DoesDestinyBondFail(enum BattlerId battler)
 // This check has always to be the last in a condtion statement because of the recording of AI data.
 bool32 IsMoveEffectBlockedByTarget(enum Ability ability)
 {
-    if (ability == ABILITY_SHIELD_DUST)
+    if (IsAbilityOrGodIII(ability, ABILITY_SHIELD_DUST))
     {
         RecordAbilityBattle(gBattlerTarget, ability);
         return TRUE;
@@ -10791,7 +10859,8 @@ u32 GetTotalAccuracy(struct BattleCalcValues *cv, u32 weather)
             calc = (calc * 80) / 100; // 1.2 hustle loss
         break;
     case ABILITY_GOD_III:
-        // Hustle: -20% accuracy on physical moves
+        // Compound Eyes: +30% accuracy, then Hustle: -20% on physical
+        calc = (calc * 130) / 100;
         if (IsBattleMovePhysical(cv->move))
             calc = (calc * 80) / 100;
         break;
@@ -10805,6 +10874,11 @@ u32 GetTotalAccuracy(struct BattleCalcValues *cv, u32 weather)
     case ABILITY_SAND_VEIL:
         if (attackerWeather & B_WEATHER_SANDSTORM)
             calc = (calc * 80) / 100; // 1.2 sand veil loss
+        break;
+    case ABILITY_GOD_III:
+        // Sand Veil: -20% accuracy for attackers in a sandstorm
+        if (attackerWeather & B_WEATHER_SANDSTORM)
+            calc = (calc * 80) / 100;
         break;
     case ABILITY_SNOW_CLOAK:
         if (attackerWeather & B_WEATHER_ICY_ANY)
@@ -10893,7 +10967,7 @@ bool32 DoesOHKOMoveMissTarget(struct BattleCalcValues *cv)
         return TRUE;
     }
 
-    if (cv->abilities[cv->battlerDef] == ABILITY_STURDY)
+    if (IsAbilityOrGodIII(cv->abilities[cv->battlerDef], ABILITY_STURDY))
     {
         gBattleStruct->moveResultFlags[cv->battlerDef] |= MOVE_RESULT_ONE_HIT_KO_STURDY;
         return TRUE;

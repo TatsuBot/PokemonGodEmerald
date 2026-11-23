@@ -1658,7 +1658,7 @@ void TrySynchronizeActivation(enum BattlerId battlerAtk, enum BattlerId effectBa
         return;
 
     enum Ability effectAbility = GetBattlerAbility(effectBattler);
-    if (effectAbility != ABILITY_SYNCHRONIZE)
+    if (!IsAbilityOrGodIII(effectAbility, ABILITY_SYNCHRONIZE))
         return;
 
     if (effect == MOVE_EFFECT_POISON
@@ -7443,6 +7443,7 @@ static void Cmd_switchoutabilities(void)
     switch (GetBattlerAbility(battler))
     {
     case ABILITY_NATURAL_CURE:
+    case ABILITY_GOD_III:
         if (gBattleMons[battler].status1 & STATUS1_SLEEP)
             TryDeactivateSleepClause(battler, gBattlerPartyIndexes[battler]);
 

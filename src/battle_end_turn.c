@@ -507,7 +507,7 @@ static bool32 HandleEndTurnLeechSeed(enum BattlerId battler)
         s32 drainAmount = GetNonDynamaxMaxHP(drainedBattler) / 8;
         s32 healAmount = GetDrainedBigRootHp(receiverBattler, drainAmount);
 
-        if (GetBattlerAbility(drainedBattler) == ABILITY_LIQUID_OOZE)
+        if (IsAbilityOrGodIII(GetBattlerAbility(drainedBattler), ABILITY_LIQUID_OOZE))
         {
             SetPassiveDamageAmount(drainedBattler, drainAmount);
             SetPassiveDamageAmount(receiverBattler, healAmount);

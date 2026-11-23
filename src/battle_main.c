@@ -4381,9 +4381,9 @@ u32 GetBattlerTotalSpeedStat(enum BattlerId battler, enum Ability ability, enum 
 
     u32 weather = GetWeather();
     // weather abilities
-    if (ability == ABILITY_SWIFT_SWIM       && holdEffect != HOLD_EFFECT_UTILITY_UMBRELLA && weather  & B_WEATHER_RAIN)
+    if ((ability == ABILITY_SWIFT_SWIM || ability == ABILITY_GOD_III) && holdEffect != HOLD_EFFECT_UTILITY_UMBRELLA && weather  & B_WEATHER_RAIN)
         speed *= 2;
-    else if (ability == ABILITY_CHLOROPHYLL && holdEffect != HOLD_EFFECT_UTILITY_UMBRELLA && weather  & B_WEATHER_SUN)
+    else if ((ability == ABILITY_CHLOROPHYLL || ability == ABILITY_GOD_III) && holdEffect != HOLD_EFFECT_UTILITY_UMBRELLA && weather  & B_WEATHER_SUN)
         speed *= 2;
     else if (ability == ABILITY_SAND_RUSH   && weather & B_WEATHER_SANDSTORM)
         speed *= 2;

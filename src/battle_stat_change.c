@@ -825,6 +825,10 @@ static bool32 CanAbilityPreventStatLoss(enum Ability ability)
 
 static bool32 AbilityPreventsSpecificStatDrop(enum Ability ability, enum Stat stat)
 {
+    // God III has Keen Eye (no Acc drops), Hyper Cutter (no Atk drops),
+    // and Illuminate (no Acc drops, Gen 9+)
+    if (ability == ABILITY_GOD_III)
+        return stat == STAT_ACC || stat == STAT_ATK;
     switch (ability)
     {
     case ABILITY_ILLUMINATE:

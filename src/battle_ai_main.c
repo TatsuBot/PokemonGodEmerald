@@ -1440,6 +1440,7 @@ static s32 AI_CheckBadMove(enum BattlerId battlerAtk, enum BattlerId battlerDef,
             }
             break;
         case ABILITY_WONDER_GUARD:
+        case ABILITY_GOD_III:
             if (effectiveness < UQ_4_12(2.0))
                 RETURN_SCORE_MINUS(20);
             break;
@@ -1782,12 +1783,12 @@ static s32 AI_CheckBadMove(enum BattlerId battlerAtk, enum BattlerId battlerDef,
         break;
     case EFFECT_PRESENT:
     case EFFECT_FIXED_HP_DAMAGE:
-        if (aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD && effectiveness < UQ_4_12(2.0))
+        if ((aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD || aiData->abilities[battlerDef] == ABILITY_GOD_III) && effectiveness < UQ_4_12(2.0))
             ADJUST_SCORE(-10);
         break;
     case EFFECT_FOCUS_PUNCH:
         // AI_CBM_HighRiskForDamage
-        if (aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD && effectiveness < UQ_4_12(2.0))
+        if ((aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD || aiData->abilities[battlerDef] == ABILITY_GOD_III) && effectiveness < UQ_4_12(2.0))
             ADJUST_SCORE(-10);
         if (HasDamagingMove(battlerDef) && !(gBattleMons[battlerAtk].volatiles.substitute
          || IsBattlerIncapacitated(battlerDef, abilityDef)
@@ -3509,6 +3510,7 @@ static s32 AI_DoubleBattle(enum BattlerId battlerAtk, enum BattlerId battlerDef,
                 break;  // handled in AI_HPAware
             case ABILITY_LEVITATE:
             case ABILITY_EELEVATE:
+            case ABILITY_GOD_III:
                 if (moveType != TYPE_GROUND)
                     isMoveAffectedByPartnerAbility = FALSE;
                 break;
@@ -3766,7 +3768,7 @@ static s32 AI_DoubleBattle(enum BattlerId battlerAtk, enum BattlerId battlerDef,
                 }
                 break;
             case EFFECT_SOAK:
-                if (atkPartnerAbility == ABILITY_WONDER_GUARD
+                if ((atkPartnerAbility == ABILITY_WONDER_GUARD || atkPartnerAbility == ABILITY_GOD_III)
                  && !IS_BATTLER_OF_TYPE(battlerAtkPartner, GetMoveArgType(move))
                  && GetActiveGimmick(battlerAtkPartner) != GIMMICK_TERA)
                 {
@@ -5453,7 +5455,7 @@ static s32 AI_CalcMoveEffectScore(enum BattlerId battlerAtk, enum BattlerId batt
             ADJUST_SCORE(DECENT_EFFECT); // Get some super effective moves
         break;
     case EFFECT_THIRD_TYPE:
-        if (aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD)
+        if (aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD || aiData->abilities[battlerDef] == ABILITY_GOD_III)
             ADJUST_SCORE(DECENT_EFFECT); // Give target more weaknesses
         break;
     case EFFECT_ELECTRIFY:
@@ -6554,7 +6556,7 @@ static s32 AI_PredictSwitch(enum BattlerId battlerAtk, enum BattlerId battlerDef
         ADJUST_SCORE(DECENT_EFFECT);
         if (gAiThinkingStruct->aiFlags[battlerAtk] & AI_FLAG_CHECK_BAD_MOVE)
         {
-            if (aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD && effectiveness < UQ_4_12(2.0))
+            if ((aiData->abilities[battlerDef] == ABILITY_WONDER_GUARD || aiData->abilities[battlerDef] == ABILITY_GOD_III) && effectiveness < UQ_4_12(2.0))
                 ADJUST_SCORE(10);
             if (HasDamagingMove(battlerDef) && !(gBattleMons[battlerAtk].volatiles.substitute
              || IsBattlerIncapacitated(battlerDef, aiData->abilities[battlerDef])

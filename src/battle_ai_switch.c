@@ -546,7 +546,8 @@ static bool32 ShouldSwitchIfWonderGuard(struct SwitchAiContext *switchContext)
     if (IsDoubleBattle())
         return FALSE;
 
-    if (gAiLogicData->abilities[switchContext->opposingBattler] != ABILITY_WONDER_GUARD)
+    if (gAiLogicData->abilities[switchContext->opposingBattler] != ABILITY_WONDER_GUARD
+     && gAiLogicData->abilities[switchContext->opposingBattler] != ABILITY_GOD_III)
         return FALSE;
 
     // Check if Pokémon has a super effective move.
@@ -602,6 +603,7 @@ static bool32 FindMonThatAbsorbsOpponentsMove(struct SwitchAiContext *switchCont
     {
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_FLASH_FIRE;
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_WELL_BAKED_BODY;
+        absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_GOD_III;
     }
     if (incomingType == TYPE_WATER)
     {
@@ -609,6 +611,7 @@ static bool32 FindMonThatAbsorbsOpponentsMove(struct SwitchAiContext *switchCont
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_DRY_SKIN;
         if (GetConfig(B_REDIRECT_ABILITY_IMMUNITY) >= GEN_5)
             absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_STORM_DRAIN;
+        absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_GOD_III;
     }
     if (incomingType == TYPE_ELECTRIC)
     {
@@ -616,6 +619,7 @@ static bool32 FindMonThatAbsorbsOpponentsMove(struct SwitchAiContext *switchCont
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_MOTOR_DRIVE;
         if (GetConfig(B_REDIRECT_ABILITY_IMMUNITY) >= GEN_5)
             absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_LIGHTNING_ROD;
+        absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_GOD_III;
     }
     if (incomingType == TYPE_GRASS)
     {
@@ -626,10 +630,12 @@ static bool32 FindMonThatAbsorbsOpponentsMove(struct SwitchAiContext *switchCont
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_EARTH_EATER;
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_LEVITATE;
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_EELEVATE;
+        absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_GOD_III;
     }
     if (IsSoundMove(switchContext->incomingMove))
     {
         absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_SOUNDPROOF;
+        absorbingTypeAbilities[numAbsorbingAbilities++] = ABILITY_GOD_III;
     }
     if (IsBallisticMove(switchContext->incomingMove))
     {

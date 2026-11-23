@@ -138,7 +138,7 @@ static enum CancelerResult CancelerAsleepOrFrozen(struct BattleCalcValues *cv)
         else
         {
             u32 toSub;
-            if (IsAbilityAndRecord(cv->battlerAtk, cv->abilities[cv->battlerAtk], ABILITY_EARLY_BIRD))
+            if (IsAbilityAndRecord(cv->battlerAtk, cv->abilities[cv->battlerAtk], ABILITY_EARLY_BIRD) || IsAbilityOrGodIII(cv->abilities[cv->battlerAtk], ABILITY_EARLY_BIRD))
                 toSub = 2;
             else
                 toSub = 1;
@@ -1019,14 +1019,14 @@ static enum CancelerResult CancelerPPDeduction(struct BattleCalcValues *cv)
         for (u32 i = 0; i < gBattlersCount; i++)
         {
             if (!IsBattlerAlly(i, cv->battlerAtk))
-                ppToDeduct += (cv->abilities[i] == ABILITY_PRESSURE);
+                ppToDeduct += IsAbilityOrGodIII(cv->abilities[i], ABILITY_PRESSURE);
         }
     }
     else if (moveTarget != TARGET_OPPONENTS_FIELD)
     {
         if (cv->battlerAtk != cv->battlerDef
          && (GetConfig(B_PRESSURE_ALLIES) < GEN_5 || !IsBattlerAlly(cv->battlerAtk, cv->battlerDef))
-         && cv->abilities[cv->battlerDef] == ABILITY_PRESSURE)
+         && IsAbilityOrGodIII(cv->abilities[cv->battlerDef], ABILITY_PRESSURE))
             ppToDeduct++;
     }
 
@@ -3351,7 +3351,7 @@ static enum MoveEndResult MoveEndAbsorb(struct BattleCalcValues *cv)
             healAmount = GetDrainedBigRootHp(cv->battlerAtk, healAmount);
             gEffectBattler = cv->battlerAtk;
 
-            if (cv->abilities[cv->battlerDef] == ABILITY_LIQUID_OOZE)
+            if (IsAbilityOrGodIII(cv->abilities[cv->battlerDef], ABILITY_LIQUID_OOZE))
             {
                 SetPassiveDamageAmount(cv->battlerAtk, healAmount);
                 gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_ABSORB_OOZE;
@@ -4161,6 +4161,7 @@ static enum MoveEndResult MoveEndMoveBlockRecoil(struct BattleCalcValues *cv)
         if (IsBattlerTurnDamaged(cv->battlerDef, INCLUDING_SUBSTITUTES) && IsBattlerAlive(cv->battlerAtk))
         {
             if (IsAbilityAndRecord(cv->battlerAtk, cv->abilities[cv->battlerAtk], ABILITY_ROCK_HEAD)
+             || IsAbilityOrGodIII(cv->abilities[cv->battlerAtk], ABILITY_ROCK_HEAD)
              || IsAbilityAndRecord(cv->battlerAtk, cv->abilities[cv->battlerAtk], ABILITY_MAGIC_GUARD))
                 break;
 
@@ -4254,7 +4255,7 @@ static enum MoveEndResult MoveEndMoveBlock(struct BattleCalcValues *cv)
                 if (!IsBattlerAlive(cv->battlerAtk) && GetConfig(B_FAINT_MOVE_EFFECT_TIMING) < GEN_CHAMPIONS)
                     break;
 
-                if (cv->abilities[battlerDef] == ABILITY_STICKY_HOLD)
+                if (IsAbilityOrGodIII(cv->abilities[battlerDef], ABILITY_STICKY_HOLD))
                 {
                     gBattlerAbility = battlerDef;
                     BattleScriptCall(BattleScript_StickyHoldActivatesRet);
@@ -4375,7 +4376,7 @@ static enum MoveEndResult MoveEndMoveBlock(struct BattleCalcValues *cv)
                     gBattleScripting.moveendState++;
                     return MOVEEND_RESULT_CONTINUE;
                 }
-                else if (cv->abilities[battlerDef] == ABILITY_SUCTION_CUPS)
+                else if (IsAbilityOrGodIII(cv->abilities[battlerDef], ABILITY_SUCTION_CUPS))
                 {
                     gBattlerAbility = battlerDef;
                     BattleScriptCall(BattleScript_AbilityPreventsPhasingOutRet);
