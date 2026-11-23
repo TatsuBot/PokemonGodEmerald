@@ -655,6 +655,7 @@ static bool32 IsIntimidateBlocked(struct BattleCalcValues *cv, struct StatChange
     case ABILITY_SCRAPPY:
     case ABILITY_OWN_TEMPO:
     case ABILITY_OBLIVIOUS:
+    case ABILITY_GOD_III:
         if (GetConfig(B_UPDATED_INTIMIDATE) < GEN_8)
             return FALSE;
         PREPARE_STAT_BUFFER(gBattleTextBuff1, st->stat);
@@ -815,6 +816,7 @@ static bool32 CanAbilityPreventStatLoss(enum Ability ability)
     case ABILITY_CLEAR_BODY:
     case ABILITY_FULL_METAL_BODY:
     case ABILITY_WHITE_SMOKE:
+    case ABILITY_GOD_III:
         return TRUE;
     default:
         return FALSE;

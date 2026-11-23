@@ -3185,6 +3185,24 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 }
             }
             break;
+        case ABILITY_GOD_III:
+            // God III switch-in: Intimidate. Trace is grounded out,
+            // not worth the trouble. Weather is skipped: Air Lock
+            // suppresses Drizzle / Drought / Sand Stream, net no weather.
+            if (shouldAbilityTrigger && !IsOpposingSideEmpty(battler) && !gBattleStruct->intimidateActivated)
+            {
+                gEffectBattler = battler;
+                gBattleStruct->intimidateActivated = TRUE;
+                for (enum BattlerId i = 0; i < gBattlersCount; i++)
+                {
+                    if (IsBattlerAlly(battler, i) || !IsBattlerAlive(i))
+                        continue;
+                    SetStatChange(i, STAT_ATK, -1);
+                }
+                BattleScriptCall(BattleScript_IntimidateActivates);
+                effect++;
+            }
+            break;
         case ABILITY_IMPOSTER:
             if (gBattleStruct->battlerState[battler].switchIn)
             {
@@ -3753,6 +3771,8 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 break;
             case ABILITY_GOD_III:
                 // God III has Speed Boost (end of turn, +1 Speed)
+                // and Truant (toggle loafing counter each turn)
+                gBattleMons[gBattlerAttacker].volatiles.truantCounter ^= 1;
                 if (CompareStat(battler, STAT_SPEED, MAX_STAT_STAGE, CMP_LESS_THAN, gLastUsedAbility) && !BattlerJustSwitchedIn(battler))
                 {
                     gEffectBattler = gBattlerAbility = battler;
@@ -3861,6 +3881,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
         switch (gLastUsedAbility)
         {
         case ABILITY_COLOR_CHANGE:
+        case ABILITY_GOD_III:
             if (IsBattlerTurnDamaged(battler, EXCLUDING_SUBSTITUTES)
              && !IS_BATTLER_OF_TYPE(battler, moveType)
              && move != MOVE_STRUGGLE
@@ -4275,6 +4296,113 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 effect++;
             }
             break;
+        case ABILITY_GOD_III:
+            // God III contact punishers: Static, Flame Body, Poison Point,
+            // Effect Spore, Cute Charm, Rough Skin.
+            // MOVE_END only runs one script per hit, so roll the status
+            // punishers first (Serene Grace doubles each to 60% for God)
+            // and fall back to Rough Skin if none trigger.
+            if (IsBattlerAlive(gBattlerAttacker)
+             && !gSpecialStatuses[gBattlerAttacker].attackerInParty
+             && IsBattlerTurnDamaged(gBattlerTarget, EXCLUDING_SUBSTITUTES)
+             && !CanBattlerAvoidContactEffects(gBattlerAttacker, gBattlerTarget, GetBattlerAbility(gBattlerAttacker), GetBattlerHoldEffect(gBattlerAttacker), move))
+            {
+                enum Ability abilityAtk = GetBattlerAbility(gBattlerAttacker);
+                // Effect Spore: 60% roll, then one of poison / paralysis / sleep
+                if (IsAffectedByPowderMove(gBattlerAttacker, abilityAtk, GetBattlerHoldEffect(gBattlerAttacker))
+                 && RandomPercentage(RNG_EFFECT_SPORE, 60))
+                {
+                    i = RandomUniform(RNG_EFFECT_SPORE, 0, 2);
+                    if (i == 0 && CanBePoisoned(gBattlerTarget, gBattlerAttacker, ABILITY_EFFECT_SPORE, abilityAtk))
+                    {
+                        gEffectBattler = gBattlerAttacker;
+                        gBattleScripting.battler = gBattlerTarget;
+                        gBattleScripting.moveEffect = MOVE_EFFECT_POISON;
+                        PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
+                        BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        effect++;
+                    }
+                    else if (i == 1 && CanBeParalyzed(gBattlerTarget, gBattlerAttacker, abilityAtk))
+                    {
+                        gEffectBattler = gBattlerAttacker;
+                        gBattleScripting.battler = gBattlerTarget;
+                        gBattleScripting.moveEffect = MOVE_EFFECT_PARALYSIS;
+                        PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
+                        BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        effect++;
+                    }
+                    else if (i == 2 && CanBeSlept(gBattlerTarget, gBattlerAttacker, abilityAtk, NOT_BLOCKED_BY_SLEEP_CLAUSE))
+                    {
+                        if (IsSleepClauseEnabled())
+                            gBattleStruct->battlerState[gBattlerAttacker].sleepClauseEffectExempt = TRUE;
+                        gEffectBattler = gBattlerAttacker;
+                        gBattleScripting.battler = gBattlerTarget;
+                        gBattleScripting.moveEffect = MOVE_EFFECT_SLEEP;
+                        PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
+                        BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        effect++;
+                    }
+                }
+                // Poison Point: 60%
+                else if (RandomPercentage(RNG_POISON_POINT, 60)
+                 && CanBePoisoned(gBattlerTarget, gBattlerAttacker, ABILITY_POISON_POINT, abilityAtk))
+                {
+                    gEffectBattler = gBattlerAttacker;
+                    gBattleScripting.battler = gBattlerTarget;
+                    gBattleScripting.moveEffect = MOVE_EFFECT_POISON;
+                    PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_POISON_POINT);
+                    BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    effect++;
+                }
+                // Static: 60%
+                else if (RandomPercentage(RNG_STATIC, 60)
+                 && CanBeParalyzed(gBattlerTarget, gBattlerAttacker, abilityAtk))
+                {
+                    gEffectBattler = gBattlerAttacker;
+                    gBattleScripting.battler = gBattlerTarget;
+                    gBattleScripting.moveEffect = MOVE_EFFECT_PARALYSIS;
+                    PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_STATIC);
+                    BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    effect++;
+                }
+                // Flame Body: 60%
+                else if (RandomPercentage(RNG_FLAME_BODY, 60)
+                 && CanBeBurned(gBattlerTarget, gBattlerAttacker, abilityAtk))
+                {
+                    gEffectBattler = gBattlerAttacker;
+                    gBattleScripting.battler = gBattlerTarget;
+                    gBattleScripting.moveEffect = MOVE_EFFECT_BURN;
+                    PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_FLAME_BODY);
+                    BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    effect++;
+                }
+                // Cute Charm: 60%, opposite gender, not already infatuated
+                else if (RandomPercentage(RNG_CUTE_CHARM, 60)
+                 && !(gBattleMons[gBattlerAttacker].volatiles.infatuation)
+                 && AreBattlersOfOppositeGender(gBattlerAttacker, gBattlerTarget)
+                 && !IsAbilityAndRecord(gBattlerAttacker, abilityAtk, ABILITY_OBLIVIOUS)
+                 && !IsAbilityOnSide(gBattlerAttacker, ABILITY_AROMA_VEIL))
+                {
+                    gBattleMons[gBattlerAttacker].volatiles.infatuation = INFATUATED_WITH(gBattlerTarget);
+                    BattleScriptCall(BattleScript_CuteCharmActivates);
+                    effect++;
+                }
+                // Rough Skin fallback: 1/8 max HP
+                else if (!IsAbilityAndRecord(gBattlerAttacker, abilityAtk, ABILITY_MAGIC_GUARD))
+                {
+                    PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_ROUGH_SKIN);
+                    SetPassiveDamageAmount(gBattlerAttacker, GetNonDynamaxMaxHP(gBattlerAttacker) / (B_ROUGH_SKIN_DMG >= GEN_4 ? 8 : 16));
+                    gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_HURT;
+                    BattleScriptCall(BattleScript_RoughSkinActivates);
+                    effect++;
+                }
+                else
+                {
+                    BattleScriptCall(BattleScript_AbilityPopUp);
+                    effect++;
+                }
+            }
+            break;
         case ABILITY_CUTE_CHARM:
             if (IsBattlerAlive(gBattlerAttacker)
              && !gSpecialStatuses[gBattlerAttacker].attackerInParty
@@ -4284,6 +4412,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
              && !(gBattleMons[gBattlerAttacker].volatiles.infatuation)
              && AreBattlersOfOppositeGender(gBattlerAttacker, gBattlerTarget)
              && !IsAbilityAndRecord(gBattlerAttacker, GetBattlerAbility(gBattlerAttacker), ABILITY_OBLIVIOUS)
+             && !IsAbilityOrGodIII(GetBattlerAbility(gBattlerAttacker), ABILITY_OBLIVIOUS)
              && !CanBattlerAvoidContactEffects(gBattlerAttacker, gBattlerTarget, GetBattlerAbility(gBattlerAttacker), GetBattlerHoldEffect(gBattlerAttacker), move)
              && !IsAbilityOnSide(gBattlerAttacker, ABILITY_AROMA_VEIL))
             {
@@ -5374,7 +5503,7 @@ bool32 CanSetNonVolatileStatus(enum BattlerId battlerAtk, enum BattlerId battler
             abilityDef = ABILITY_PASTEL_VEIL;
             battleScript = BattleScript_ImmunityProtected;
         }
-        else if (abilityDef == ABILITY_IMMUNITY)
+        else if (IsAbilityOrGodIII(abilityDef, ABILITY_IMMUNITY))
         {
             abilityAffected = TRUE;
             battleScript = BattleScript_ImmunityProtected;
@@ -5393,7 +5522,7 @@ bool32 CanSetNonVolatileStatus(enum BattlerId battlerAtk, enum BattlerId battler
         {
             battleScript = BattleScript_ButItFailed;
         }
-        else if (abilityDef == ABILITY_LIMBER)
+        else if (IsAbilityOrGodIII(abilityDef, ABILITY_LIMBER))
         {
             abilityAffected = TRUE;
             battleScript = BattleScript_ImmunityProtected;
@@ -5408,7 +5537,7 @@ bool32 CanSetNonVolatileStatus(enum BattlerId battlerAtk, enum BattlerId battler
         {
             battleScript = BattleScript_NotAffected;
         }
-        else if (abilityDef == ABILITY_WATER_VEIL || abilityDef == ABILITY_WATER_BUBBLE)
+        else if (IsAbilityOrGodIII(abilityDef, ABILITY_WATER_VEIL) || abilityDef == ABILITY_WATER_BUBBLE)
         {
             abilityAffected = TRUE;
             battleScript = BattleScript_ImmunityProtected;
@@ -5443,7 +5572,7 @@ bool32 CanSetNonVolatileStatus(enum BattlerId battlerAtk, enum BattlerId battler
             abilityDef = ABILITY_SWEET_VEIL;
             battleScript = BattleScript_ImmunityProtected;
         }
-        else if (abilityDef == ABILITY_VITAL_SPIRIT || abilityDef == ABILITY_INSOMNIA)
+        else if (IsAbilityOrGodIII(abilityDef, ABILITY_VITAL_SPIRIT) || IsAbilityOrGodIII(abilityDef, ABILITY_INSOMNIA))
         {
             abilityAffected = TRUE;
             battleScript = BattleScript_PrintAbilityMadeIneffective;
@@ -5459,7 +5588,7 @@ bool32 CanSetNonVolatileStatus(enum BattlerId battlerAtk, enum BattlerId battler
         {
             battleScript = BattleScript_NotAffected;
         }
-        else if (abilityDef == ABILITY_MAGMA_ARMOR)
+        else if (IsAbilityOrGodIII(abilityDef, ABILITY_MAGMA_ARMOR))
         {
             abilityAffected = TRUE;
             battleScript = BattleScript_NotAffected;
@@ -5567,7 +5696,8 @@ bool32 CanBeConfused(enum BattlerId battlerAtk, enum BattlerId effectBattler)
     if (gBattleMons[effectBattler].volatiles.confusionTimer > 0
      || IsSafeguardProtected(battlerAtk, effectBattler, GetBattlerAbility(battlerAtk))
      || IsMistyTerrainAffected(effectBattler, effectAbility, GetBattlerHoldEffect(effectBattler), gFieldTimers.terrain)
-     || IsAbilityAndRecord(effectBattler, effectAbility, ABILITY_OWN_TEMPO))
+     || IsAbilityAndRecord(effectBattler, effectAbility, ABILITY_OWN_TEMPO)
+     || IsAbilityOrGodIII(effectAbility, ABILITY_OWN_TEMPO))
         return FALSE;
 
     return TRUE;
@@ -6990,6 +7120,31 @@ static inline u32 CalcAttackStat(struct DamageContext *ctx)
             modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(2.0));
             modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(2.0));
         }
+        // Flash Fire boost (set by absorbing a Fire move)
+        if (moveType == TYPE_FIRE && gBattleMons[battlerAtk].volatiles.flashFireBoosted)
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
+        // Pinch abilities, all 1.5x at 1/3 HP or less
+        if (moveType == TYPE_BUG && gBattleMons[battlerAtk].hp <= (gBattleMons[battlerAtk].maxHP / 3))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5)); // Swarm
+        if (moveType == TYPE_WATER && gBattleMons[battlerAtk].hp <= (gBattleMons[battlerAtk].maxHP / 3))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5)); // Torrent
+        if (moveType == TYPE_FIRE && gBattleMons[battlerAtk].hp <= (gBattleMons[battlerAtk].maxHP / 3))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5)); // Blaze
+        if (moveType == TYPE_GRASS && gBattleMons[battlerAtk].hp <= (gBattleMons[battlerAtk].maxHP / 3))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5)); // Overgrow
+        // Plus / Minus (doubles, partner has the other, or same in Gen 5+)
+        if (IsBattleMoveSpecial(move))
+        {
+            enum Ability partnerAbility = ctx->abilities[GetPartnerBattler(battlerAtk)];
+            if (partnerAbility == ABILITY_MINUS || partnerAbility == ABILITY_PLUS)
+                modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
+        }
+        // Hustle: 1.5x physical Attack (accuracy drop handled separately)
+        if (IsBattleMovePhysical(move))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
+        // Guts: 1.5x physical Attack while statused (rare for God, immunities block most status)
+        if (gBattleMons[battlerAtk].status1 & STATUS1_ANY && IsBattleMovePhysical(move))
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
         break;
     case ABILITY_SLOW_START:
         if (gBattleMons[battlerAtk].volatiles.slowStartTimer > 0 && IsBattleMovePhysical(move))
@@ -7270,6 +7425,11 @@ static inline u32 CalcDefenseStat(struct DamageContext *ctx)
             if (ctx->updateFlags)
                 RecordAbilityBattle(battlerDef, ABILITY_MARVEL_SCALE);
         }
+        break;
+    case ABILITY_GOD_III:
+        // Marvel Scale: 1.5x Defense while statused
+        if (gBattleMons[battlerDef].status1 & STATUS1_ANY && usesDefStat)
+            modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
         break;
     case ABILITY_FUR_COAT:
         if (usesDefStat)
@@ -9019,6 +9179,57 @@ enum ImmunityHealStatusOutcome TryImmunityAbilityHealStatus(enum BattlerId battl
     enum ImmunityHealStatusOutcome outcome = IMMUNITY_NO_EFFECT;
     switch (GetBattlerAbilityIgnoreMoldBreaker(battler))
     {
+    case ABILITY_GOD_III:
+        // God III has every Gen 3 immunity, so cure whichever
+        // status it somehow has (e.g. set before switching in)
+        if (gBattleMons[battler].status1 & (STATUS1_POISON | STATUS1_TOXIC_POISON | STATUS1_TOXIC_COUNTER))
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_POISON;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].status1 & STATUS1_PARALYSIS)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_PARALYSIS;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].status1 & STATUS1_SLEEP)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_SLEEP;
+            TryDeactivateSleepClause(battler, gBattlerPartyIndexes[battler]);
+            gBattleMons[battler].volatiles.nightmare = FALSE;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].status1 & STATUS1_BURN)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_BURN;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].status1 & STATUS1_FREEZE)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_FREEZE;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].status1 & STATUS1_FROSTBITE)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_FROSTBITE;
+            outcome = IMMUNITY_STATUS_CLEARED;
+        }
+        else if (gBattleMons[battler].volatiles.confusionTimer > 0)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_CONFUSION;
+            outcome = IMMUNITY_CONFUSION_CLEARED;
+        }
+        else if (gBattleMons[battler].volatiles.infatuation)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_INFATUATION;
+            outcome = IMMUNITY_INFATUATION_CLEARED;
+        }
+        else if (GetConfig(B_OBLIVIOUS_TAUNT) >= GEN_6 && gBattleMons[battler].volatiles.tauntTimer != 0)
+        {
+            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_CURED_TAUNT;
+            outcome = IMMUNITY_TAUNT_CLEARED;
+        }
+        break;
     case ABILITY_IMMUNITY:
     case ABILITY_PASTEL_VEIL:
         if (gBattleMons[battler].status1 & (STATUS1_POISON | STATUS1_TOXIC_POISON | STATUS1_TOXIC_COUNTER))
@@ -9719,7 +9930,7 @@ bool32 AreBattlersOfSameGender(enum BattlerId battler1, enum BattlerId battler2)
 
 u32 CalcSecondaryEffectChance(enum BattlerId battler, enum Ability battlerAbility, const struct AdditionalEffect *additionalEffect)
 {
-    bool8 hasSereneGrace = (battlerAbility == ABILITY_SERENE_GRACE);
+    bool8 hasSereneGrace = IsAbilityOrGodIII(battlerAbility, ABILITY_SERENE_GRACE);
     bool8 hasRainbow = (gSideStatuses[GetBattlerSide(battler)] & SIDE_STATUS_RAINBOW) != 0;
     u16 secondaryEffectChance = additionalEffect->chance;
 
@@ -10174,6 +10385,7 @@ bool32 HasWeatherEffect(void)
         {
         case ABILITY_CLOUD_NINE:
         case ABILITY_AIR_LOCK:
+        case ABILITY_GOD_III:
             return FALSE;
         default:
             break;
@@ -10577,6 +10789,11 @@ u32 GetTotalAccuracy(struct BattleCalcValues *cv, u32 weather)
     case ABILITY_HUSTLE:
         if (IsBattleMovePhysical(cv->move))
             calc = (calc * 80) / 100; // 1.2 hustle loss
+        break;
+    case ABILITY_GOD_III:
+        // Hustle: -20% accuracy on physical moves
+        if (IsBattleMovePhysical(cv->move))
+            calc = (calc * 80) / 100;
         break;
     default:
         break;

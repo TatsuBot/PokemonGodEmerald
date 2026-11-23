@@ -70,7 +70,7 @@ static void HandleSetEffectConfusion(struct BattleCalcValues *cv, struct SetEffe
 
 static void HandleSetEffectFlinch(struct BattleCalcValues *cv, struct SetEffect *se)
 {
-    if (cv->abilities[se->effectBattler] == ABILITY_INNER_FOCUS)
+    if (IsAbilityOrGodIII(cv->abilities[se->effectBattler], ABILITY_INNER_FOCUS))
     {
         if (se->primary || se->certain)
         {

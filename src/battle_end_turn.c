@@ -1337,6 +1337,7 @@ static bool32 HandleEndTurnThirdEventBlock(enum BattlerId battler)
         switch (ability)
         {
         case ABILITY_TRUANT: // Not fully accurate but it has to be handled somehow. TODO: Implement the correct gen5+ behavior
+        case ABILITY_GOD_III:
         case ABILITY_CUD_CHEW:
         case ABILITY_SLOW_START:
         case ABILITY_BAD_DREAMS:
