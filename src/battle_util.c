@@ -3751,6 +3751,16 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                     effect++;
                 }
                 break;
+            case ABILITY_GOD_III:
+                // God III has Speed Boost (end of turn, +1 Speed)
+                if (CompareStat(battler, STAT_SPEED, MAX_STAT_STAGE, CMP_LESS_THAN, gLastUsedAbility) && !BattlerJustSwitchedIn(battler))
+                {
+                    gEffectBattler = gBattlerAbility = battler;
+                    SetStatChange(battler, STAT_SPEED, 1);
+                    BattleScriptCall(BattleScript_AbilityStatChange);
+                    effect++;
+                }
+                break;
             case ABILITY_MOODY:
                 {
                     enum Stat stat = STAT_ATK;
@@ -6002,7 +6012,7 @@ static bool32 IsBattlerUngroundedByAbilityItemOrEffect(enum BattlerId battler, e
         return TRUE;
     if (holdEffect == HOLD_EFFECT_AIR_BALLOON)
         return TRUE;
-    if (ability == ABILITY_LEVITATE || ability == ABILITY_EELEVATE)
+    if (IsAbilityOrGodIII(ability, ABILITY_LEVITATE) || ability == ABILITY_EELEVATE)
         return TRUE;
     return FALSE;
 }
@@ -8345,7 +8355,7 @@ static inline uq4_12_t CalcTypeEffectivenessMultiplierInternal(struct DamageCont
         && !(ctx->holdEffects[ctx->battlerDef] == HOLD_EFFECT_RING_TARGET && IS_BATTLER_OF_TYPE(ctx->battlerDef, TYPE_FLYING) && !IsBattlerUngroundedByAbilityItemOrEffect(ctx->battlerDef, ctx->abilities[ctx->battlerDef], ctx->holdEffects[ctx->battlerDef])))
     {
         modifier = UQ_4_12(0.0);
-        if (ctx->updateFlags && (ctx->abilities[ctx->battlerDef] == ABILITY_LEVITATE || ctx->abilities[ctx->battlerDef] == ABILITY_EELEVATE))
+        if (ctx->updateFlags && (IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_LEVITATE) || ctx->abilities[ctx->battlerDef] == ABILITY_EELEVATE))
         {
             gBattleStruct->moveResultFlags[ctx->battlerDef] |= (MOVE_RESULT_MISSED | MOVE_RESULT_DOESNT_AFFECT_FOE);
             gLastUsedAbility = ctx->abilities[ctx->battlerDef];
@@ -8460,7 +8470,7 @@ uq4_12_t CalcPartyMonTypeEffectivenessMultiplier(enum Move move, enum Species sp
             MulByTypeEffectiveness(&ctx, &modifier, GetSpeciesType(speciesDef, 1));
 
         if (ctx.moveType == TYPE_GROUND
-         && (abilityDef == ABILITY_LEVITATE || abilityDef == ABILITY_EELEVATE)
+         && (IsAbilityOrGodIII(abilityDef, ABILITY_LEVITATE) || abilityDef == ABILITY_EELEVATE)
          && !(gFieldStatuses & STATUS_FIELD_GRAVITY))
             modifier = UQ_4_12(0.0);
         if (IsAbilityOrGodIII(abilityDef, ABILITY_WONDER_GUARD) && modifier <= UQ_4_12(1.0) && GetMovePower(move) != 0)
