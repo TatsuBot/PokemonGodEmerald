@@ -2386,6 +2386,38 @@ bool32 CanAbilityAbsorbMove(struct DamageContext *ctx)
         if (ctx->moveType == TYPE_FIRE && (B_FLASH_FIRE_FROZEN >= GEN_5 || !(gBattleMons[ctx->battlerDef].status1 & STATUS1_FREEZE)))
             battleScript = AbsorbedByFlashFire(ctx);
         break;
+    case ABILITY_GOD_III:
+        // God III has all Gen 3 absorbs: Volt Absorb, Water Absorb,
+        // Flash Fire, Soundproof, and Lightning Rod.
+        if (ctx->moveType == TYPE_ELECTRIC)
+        {
+            // Stack Volt Absorb (heal 1/4) + Lightning Rod (+1 Sp. Atk).
+            // CanAbilityAbsorbMove only returns one script, so the heal
+            // is the visible script and the Sp. Atk boost is queued
+            // via SetStatChange. At max HP there is nothing to heal,
+            // so use the stat script instead so the boost still shows.
+            if (IsBattlerAtMaxHp(ctx->battlerDef))
+                battleScript = AbsorbedByStatIncreaseAbility(ctx, STAT_SPATK, 1);
+            else
+            {
+                if (ctx->runScript)
+                    SetStatChange(ctx->battlerDef, STAT_SPATK, 1);
+                battleScript = AbsorbedByDrainHpAbility(ctx->battlerDef);
+            }
+        }
+        else if (ctx->moveType == TYPE_WATER)
+        {
+            battleScript = AbsorbedByDrainHpAbility(ctx->battlerDef);
+        }
+        else if (ctx->moveType == TYPE_FIRE && (B_FLASH_FIRE_FROZEN >= GEN_5 || !(gBattleMons[ctx->battlerDef].status1 & STATUS1_FREEZE)))
+        {
+            battleScript = AbsorbedByFlashFire(ctx);
+        }
+        else if (IsSoundMove(ctx->move))
+        {
+            battleScript = BattleScript_AbilityProtectedTarget;
+        }
+        break;
     case ABILITY_SOUNDPROOF:
         if (IsSoundMove(ctx->move))
             battleScript = BattleScript_AbilityProtectedTarget;
