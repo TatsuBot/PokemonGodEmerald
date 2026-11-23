@@ -1817,6 +1817,23 @@ bool32 IsAbilityAndRecord(enum BattlerId battler, enum Ability battlerAbility, e
     return TRUE;
 }
 
+// God III has all Gen 3 abilities (ABILITIES_COUNT_GEN3, excluding ABILITY_NONE).
+// Returns TRUE if the battler has the checked ability, or has God III and
+// the checked ability is a Gen 3 ability. Duplicates stack because each
+// ability check fires separately for God III.
+bool32 IsAbilityOrGodIII(enum Ability battlerAbility, enum Ability abilityToCheck)
+{
+    if (battlerAbility == abilityToCheck)
+        return TRUE;
+
+    if (battlerAbility == ABILITY_GOD_III
+        && abilityToCheck != ABILITY_NONE
+        && abilityToCheck < ABILITIES_COUNT_GEN3)
+        return TRUE;
+
+    return FALSE;
+}
+
 bool32 HandleFaintedMonActions(void)
 {
     if (gBattleTypeFlags & BATTLE_TYPE_SAFARI)
@@ -8324,7 +8341,7 @@ static inline uq4_12_t CalcTypeEffectivenessMultiplierInternal(struct DamageCont
         modifier = UQ_4_12(1.0);
     }
 
-    if (((ctx->abilities[ctx->battlerDef] == ABILITY_WONDER_GUARD && modifier <= UQ_4_12(1.0) && !isPresentHealing)
+    if (((IsAbilityOrGodIII(ctx->abilities[ctx->battlerDef], ABILITY_WONDER_GUARD) && modifier <= UQ_4_12(1.0) && !isPresentHealing)
         || (ctx->abilities[ctx->battlerDef] == ABILITY_TELEPATHY && ctx->battlerDef == GetPartnerBattler(ctx->battlerAtk)))
         && GetMovePower(ctx->move) != 0)
     {
@@ -8406,7 +8423,7 @@ uq4_12_t CalcPartyMonTypeEffectivenessMultiplier(enum Move move, enum Species sp
          && (abilityDef == ABILITY_LEVITATE || abilityDef == ABILITY_EELEVATE)
          && !(gFieldStatuses & STATUS_FIELD_GRAVITY))
             modifier = UQ_4_12(0.0);
-        if (abilityDef == ABILITY_WONDER_GUARD && modifier <= UQ_4_12(1.0) && GetMovePower(move) != 0)
+        if (IsAbilityOrGodIII(abilityDef, ABILITY_WONDER_GUARD) && modifier <= UQ_4_12(1.0) && GetMovePower(move) != 0)
             modifier = UQ_4_12(0.0);
     }
 
@@ -8450,7 +8467,7 @@ uq4_12_t GetOverworldTypeEffectiveness(struct Pokemon *mon, enum Type moveType)
     if (type2 != type1)
         MulByTypeEffectiveness(&ctx, &modifier, type2);
 
-    if ((modifier <= UQ_4_12(1.0) && ctx.abilities[B_BATTLER_0] == ABILITY_WONDER_GUARD)
+    if ((modifier <= UQ_4_12(1.0) && IsAbilityOrGodIII(ctx.abilities[B_BATTLER_0], ABILITY_WONDER_GUARD))
      || CanAbilityAbsorbMove(&ctx))
         modifier = UQ_4_12(0.0);
 
