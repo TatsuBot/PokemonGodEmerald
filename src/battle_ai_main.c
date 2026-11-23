@@ -1993,7 +1993,7 @@ static s32 AI_CheckBadMove(enum BattlerId battlerAtk, enum BattlerId battlerDef,
               && aiData->abilities[battlerAtk] != ABILITY_SOUNDPROOF
               && aiData->abilities[battlerAtk] != ABILITY_GOD_III
               && CountUsablePartyMons(battlerDef) >= 1
-              && (aiData->abilities[GetPartnerBattler(battlerAtk)] != ABILITY_SOUNDPROOF && aiData->abilities[GetPartnerBattler(battlerAtk)] != ABILITY_GOD_III || !IsBattlerAlive(GetPartnerBattler(battlerAtk))))
+              && ((aiData->abilities[GetPartnerBattler(battlerAtk)] != ABILITY_SOUNDPROOF && aiData->abilities[GetPartnerBattler(battlerAtk)] != ABILITY_GOD_III) || !IsBattlerAlive(GetPartnerBattler(battlerAtk))))
             {
                 ADJUST_SCORE(-10); //Don't wipe your team if you're going to lose
             }
