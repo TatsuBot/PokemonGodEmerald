@@ -356,6 +356,12 @@ bool32 EndOrContinueWeather(void)
     if (currBattleWeather == BATTLE_WEATHER_NONE)
         return FALSE;
 
+    // God III's Air Lock suppresses the stored weather while it is on
+    // field: no "weather rages" message, no animation, and the stored
+    // weather's duration does not tick down until God leaves.
+    if (!HasWeatherEffect())
+        return FALSE;
+
     if (gBattleStruct->weatherDuration > 0 && --gBattleStruct->weatherDuration == 0)
     {
         gBattleWeather = B_WEATHER_NONE;
