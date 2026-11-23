@@ -3186,10 +3186,26 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
             }
             break;
         case ABILITY_GOD_III:
-            // God III switch-in: Intimidate. Trace is grounded out,
-            // not worth the trouble. Weather is skipped: Air Lock
-            // suppresses Drizzle / Drought / Sand Stream, net no weather.
-            if (shouldAbilityTrigger && !IsOpposingSideEmpty(battler) && !gBattleStruct->intimidateActivated)
+            // God III switch-in: only Air Lock and Intimidate show
+            // messages. Drizzle / Drought / Sand Stream still run, but
+            // silently (TryChangeBattleWeather, no script): the weather
+            // is stored in gBattleWeather, suppressed by Air Lock while
+            // God is on field, and only becomes active once God leaves.
+            // The last setter wins, so the stored weather is sandstorm.
+            // Trace is grounded out, not worth the trouble.
+            if (shouldAbilityTrigger)
+            {
+                TryChangeBattleWeather(battler, BATTLE_WEATHER_RAIN, ABILITY_DRIZZLE);
+                TryChangeBattleWeather(battler, BATTLE_WEATHER_SUN, ABILITY_DROUGHT);
+                TryChangeBattleWeather(battler, BATTLE_WEATHER_SANDSTORM, ABILITY_SAND_STREAM);
+            }
+            if (shouldAbilityTrigger && !gBattleStruct->godAirLockAnnounced)
+            {
+                gBattleStruct->godAirLockAnnounced = TRUE;
+                BattleScriptCall(BattleScript_AnnounceAirLockCloudNine);
+                effect++;
+            }
+            else if (shouldAbilityTrigger && !IsOpposingSideEmpty(battler) && !gBattleStruct->intimidateActivated)
             {
                 gEffectBattler = battler;
                 gBattleStruct->intimidateActivated = TRUE;
@@ -4350,15 +4366,18 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
         case ABILITY_GOD_III:
             // God III contact punishers: Static, Flame Body, Poison Point,
             // Effect Spore, Cute Charm, Rough Skin.
-            // MOVE_END only runs one script per hit, so roll the status
-            // punishers first (Serene Grace doubles each to 60% for God)
-            // and fall back to Rough Skin if none trigger.
+            // The status punishers roll first (Serene Grace doubles each
+            // to 60% for God). If one triggers, Rough Skin stacks on top:
+            // the status script is called, then Rough Skin is pushed so
+            // it runs right after (both scripts end with return).
+            // Rough Skin still fires alone if no status triggers.
             if (IsBattlerAlive(gBattlerAttacker)
              && !gSpecialStatuses[gBattlerAttacker].attackerInParty
              && IsBattlerTurnDamaged(gBattlerTarget, EXCLUDING_SUBSTITUTES)
              && !CanBattlerAvoidContactEffects(gBattlerAttacker, gBattlerTarget, GetBattlerAbility(gBattlerAttacker), GetBattlerHoldEffect(gBattlerAttacker), move))
             {
                 enum Ability abilityAtk = GetBattlerAbility(gBattlerAttacker);
+                bool32 statusTriggered = FALSE;
                 // Effect Spore: 60% roll, then one of poison / paralysis / sleep
                 if (IsAffectedByPowderMove(gBattlerAttacker, abilityAtk, GetBattlerHoldEffect(gBattlerAttacker))
                  && RandomPercentage(RNG_EFFECT_SPORE, 60))
@@ -4371,6 +4390,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                         gBattleScripting.moveEffect = MOVE_EFFECT_POISON;
                         PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
                         BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        statusTriggered = TRUE;
                         effect++;
                     }
                     else if (i == 1 && CanBeParalyzed(gBattlerTarget, gBattlerAttacker, abilityAtk))
@@ -4380,6 +4400,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                         gBattleScripting.moveEffect = MOVE_EFFECT_PARALYSIS;
                         PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
                         BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        statusTriggered = TRUE;
                         effect++;
                     }
                     else if (i == 2 && CanBeSlept(gBattlerTarget, gBattlerAttacker, abilityAtk, NOT_BLOCKED_BY_SLEEP_CLAUSE))
@@ -4391,6 +4412,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                         gBattleScripting.moveEffect = MOVE_EFFECT_SLEEP;
                         PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_EFFECT_SPORE);
                         BattleScriptCall(BattleScript_AbilityStatusEffect);
+                        statusTriggered = TRUE;
                         effect++;
                     }
                 }
@@ -4403,6 +4425,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                     gBattleScripting.moveEffect = MOVE_EFFECT_POISON;
                     PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_POISON_POINT);
                     BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    statusTriggered = TRUE;
                     effect++;
                 }
                 // Static: 60%
@@ -4414,6 +4437,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                     gBattleScripting.moveEffect = MOVE_EFFECT_PARALYSIS;
                     PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_STATIC);
                     BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    statusTriggered = TRUE;
                     effect++;
                 }
                 // Flame Body: 60%
@@ -4425,6 +4449,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                     gBattleScripting.moveEffect = MOVE_EFFECT_BURN;
                     PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_FLAME_BODY);
                     BattleScriptCall(BattleScript_AbilityStatusEffect);
+                    statusTriggered = TRUE;
                     effect++;
                 }
                 // Cute Charm: 60%, opposite gender, not already infatuated
@@ -4436,9 +4461,20 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
                 {
                     gBattleMons[gBattlerAttacker].volatiles.infatuation = INFATUATED_WITH(gBattlerTarget);
                     BattleScriptCall(BattleScript_CuteCharmActivates);
+                    statusTriggered = TRUE;
                     effect++;
                 }
-                // Rough Skin fallback: 1/8 max HP
+                // Rough Skin: 1/8 max HP, stacked after a status, or alone
+                if (statusTriggered)
+                {
+                    if (!IsAbilityAndRecord(gBattlerAttacker, abilityAtk, ABILITY_MAGIC_GUARD))
+                    {
+                        PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_ROUGH_SKIN);
+                        SetPassiveDamageAmount(gBattlerAttacker, GetNonDynamaxMaxHP(gBattlerAttacker) / (B_ROUGH_SKIN_DMG >= GEN_4 ? 8 : 16));
+                        gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_HURT;
+                        BattleScriptPush(BattleScript_RoughSkinActivates);
+                    }
+                }
                 else if (!IsAbilityAndRecord(gBattlerAttacker, abilityAtk, ABILITY_MAGIC_GUARD))
                 {
                     PREPARE_ABILITY_BUFFER(gBattleTextBuff1, ABILITY_ROUGH_SKIN);

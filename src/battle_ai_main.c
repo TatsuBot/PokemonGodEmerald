@@ -3914,6 +3914,9 @@ static bool32 IsPinchBerryItemEffect(enum HoldEffect holdEffect)
 
 static bool32 DoesAbilityBenefitFromSunOrRain(enum BattlerId battler, enum Ability ability, u32 weather)
 {
+    // God III benefits from rain (Rain Dish, Swift Swim) and sun (Chlorophyll)
+    if (ability == ABILITY_GOD_III)
+        return (weather & (B_WEATHER_RAIN | B_WEATHER_SUN));
     switch (ability)
     {
     case ABILITY_DRY_SKIN:

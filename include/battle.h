@@ -745,6 +745,7 @@ struct BattleStruct
     u8 intimidateActivated:1;
     u8 allowPartingShot:1;
     u8 adrenalineOrbActivated:1; // prevents looping after an adrenaline stat changed
+    u8 godAirLockAnnounced:1; // God III: Air Lock message shown this switch-in
 };
 
 struct AiBattleData

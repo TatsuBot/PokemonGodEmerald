@@ -422,7 +422,7 @@ static bool32 ShouldSwitchIfHasBadOdds(struct SwitchAiContext *switchContext)
 static bool32 ShouldSwitchIfTruant(struct SwitchAiContext *switchContext)
 {
     // Switch if mon with truant is bodied by Protect or invulnerability spam
-    if (gAiLogicData->abilities[switchContext->battler] == ABILITY_TRUANT
+    if ((gAiLogicData->abilities[switchContext->battler] == ABILITY_TRUANT || gAiLogicData->abilities[switchContext->battler] == ABILITY_GOD_III)
         && IsTruantMonVulnerable(switchContext->battler, switchContext->opposingBattler)
         && gBattleMons[switchContext->battler].volatiles.truantCounter
         && gBattleMons[switchContext->battler].hp >= gBattleMons[switchContext->battler].maxHP / 2
@@ -1940,7 +1940,7 @@ static u32 GetSwitchinHitsToKO(s32 damageTaken, enum BattlerId battler, const st
         currentHP = currentHP - damageTaken;
 
         // One shot prevention effects
-        if (damageTaken >= maxHP && startingHP == maxHP && (heldItemEffect == HOLD_EFFECT_FOCUS_SASH || (!opponentCanBreakMold && GetConfig(B_STURDY) >= GEN_5 && ability == ABILITY_STURDY)) && hitsToKO < 1)
+        if (damageTaken >= maxHP && startingHP == maxHP && (heldItemEffect == HOLD_EFFECT_FOCUS_SASH || (!opponentCanBreakMold && GetConfig(B_STURDY) >= GEN_5 && (ability == ABILITY_STURDY || ability == ABILITY_GOD_III))) && hitsToKO < 1)
             currentHP = 1;
 
         // If mon is still alive, apply weather impact first, as it might KO the mon before it can heal with its item (order is weather -> item -> status)
@@ -2269,7 +2269,7 @@ static u32 GetBestMonIntegrated(struct Pokemon *party, int lastId, enum BattlerI
         }
 
         // While not really invalid per se, not really wise to switch into this mon
-        if (gAiLogicData->abilities[battler] == ABILITY_TRUANT && IsTruantMonVulnerable(battler, opposingBattler))
+        if ((gAiLogicData->abilities[battler] == ABILITY_TRUANT || gAiLogicData->abilities[battler] == ABILITY_GOD_III) && IsTruantMonVulnerable(battler, opposingBattler))
             continue;
 
         // Get max number of hits for player to KO AI mon and type matchup for defensive switching
@@ -2520,7 +2520,7 @@ static u32 GetBestMonVanilla(struct Pokemon *party, int lastId, enum BattlerId b
         InitializeSwitchinCandidate(battler, monIndex, &party[monIndex]);
 
         // While not really invalid per se, not really wise to switch into this mon
-        if (gAiLogicData->abilities[battler] == ABILITY_TRUANT && IsTruantMonVulnerable(battler, opposingBattler))
+        if ((gAiLogicData->abilities[battler] == ABILITY_TRUANT || gAiLogicData->abilities[battler] == ABILITY_GOD_III) && IsTruantMonVulnerable(battler, opposingBattler))
             continue;
 
         typeMatchup = GetBattlerTypeMatchup(opposingBattler, battler);

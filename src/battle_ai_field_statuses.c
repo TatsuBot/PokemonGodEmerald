@@ -156,6 +156,10 @@ bool32 FieldStatusChecker(enum BattlerId battler, u32 fieldStatus, enum FieldEff
 
 static bool32 DoesAbilityBenefitFromWeather(enum Ability ability, u32 weather)
 {
+    // God III benefits from rain (Rain Dish, Swift Swim), sun (Chlorophyll),
+    // and sandstorm (Sand Veil)
+    if (ability == ABILITY_GOD_III)
+        return (weather & (B_WEATHER_RAIN | B_WEATHER_SUN | B_WEATHER_SANDSTORM));
     switch (ability)
     {
     case ABILITY_FORECAST:

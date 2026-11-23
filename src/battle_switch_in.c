@@ -171,6 +171,7 @@ bool32 DoSwitchInEvents(void)
 
         gBattleStruct->intimidateActivated = FALSE;
         gBattleStruct->adrenalineOrbActivated = FALSE;
+        gBattleStruct->godAirLockAnnounced = FALSE;
         gBattleStruct->battlersSorted = FALSE;
         gBattleStruct->hazardsCounter = 0;
         gBattleStruct->eventState.switchIn++;

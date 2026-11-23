@@ -621,7 +621,7 @@ bool32 IsDamageMoveUnusable(struct DamageContext *ctx)
     if (ctx->weather & B_WEATHER_RAIN_PRIMAL && ctx->moveType == TYPE_FIRE)
         return TRUE;
 
-    if (IsMoveDampBanned(ctx->move) && (battlerDefAbility == ABILITY_DAMP || partnerDefAbility == ABILITY_DAMP))
+    if (IsMoveDampBanned(ctx->move) && (battlerDefAbility == ABILITY_DAMP || partnerDefAbility == ABILITY_DAMP || battlerDefAbility == ABILITY_GOD_III || partnerDefAbility == ABILITY_GOD_III))
         return TRUE;
 
     switch (GetMoveEffect(ctx->move))
@@ -1470,7 +1470,7 @@ bool32 CanEndureHit(enum BattlerId battler, enum BattlerId battlerTarget, enum M
 
     if (!DoesBattlerIgnoreAbilityChecks(battler, gAiLogicData->abilities[battler], move))
     {
-        if (GetConfig(B_STURDY) >= GEN_5 && gAiLogicData->abilities[battlerTarget] == ABILITY_STURDY)
+        if (GetConfig(B_STURDY) >= GEN_5 && (gAiLogicData->abilities[battlerTarget] == ABILITY_STURDY || gAiLogicData->abilities[battlerTarget] == ABILITY_GOD_III))
             return TRUE;
         if (IsMimikyuDisguised(battlerTarget))
             return TRUE;
@@ -2136,7 +2136,7 @@ bool32 ShouldTryOHKO(enum BattlerId battlerAtk, enum BattlerId battlerDef, enum 
     else if (holdEffect == HOLD_EFFECT_FOCUS_SASH && AI_BattlerAtMaxHp(battlerDef))
         return FALSE;
 
-    if (!DoesBattlerIgnoreAbilityChecks(battlerAtk, atkAbility, move) && defAbility == ABILITY_STURDY)
+    if (!DoesBattlerIgnoreAbilityChecks(battlerAtk, atkAbility, move) && (defAbility == ABILITY_STURDY || defAbility == ABILITY_GOD_III))
         return FALSE;
 
     bool32 sureHit = (gBattleMons[battlerAtk].volatiles.battlerWithSureHit == battlerDef + 1) || atkAbility == ABILITY_NO_GUARD || defAbility == ABILITY_NO_GUARD;
@@ -3544,7 +3544,7 @@ bool32 BattlerHasMaxHPProtection(enum BattlerId battler)
         return FALSE;
     if (gAiLogicData->holdEffects[battler] == HOLD_EFFECT_FOCUS_SASH)
         return TRUE;
-    if (GetConfig(B_STURDY) >= GEN_5 && ability == ABILITY_STURDY)
+    if (GetConfig(B_STURDY) >= GEN_5 && (ability == ABILITY_STURDY || ability == ABILITY_GOD_III))
         return TRUE;
     if (ability == ABILITY_MULTISCALE || ability == ABILITY_SHADOW_SHIELD)
         return TRUE;
@@ -3613,7 +3613,7 @@ bool32 IsBattlerIncapacitated(enum BattlerId battler, enum Ability ability)
     if (gBattleMons[battler].status1 & STATUS1_SLEEP && !HasMoveUsableWhileAsleep(battler))
         return TRUE;
 
-    if (gBattleMons[battler].volatiles.rechargeTimer > 0 || (ability == ABILITY_TRUANT && gBattleMons[battler].volatiles.truantCounter != 0))
+    if (gBattleMons[battler].volatiles.rechargeTimer > 0 || ((ability == ABILITY_TRUANT || ability == ABILITY_GOD_III) && gBattleMons[battler].volatiles.truantCounter != 0))
         return TRUE;
 
     return FALSE;

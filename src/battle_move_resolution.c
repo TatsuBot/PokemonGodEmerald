@@ -4323,7 +4323,7 @@ static enum MoveEndResult MoveEndMoveBlock(struct BattleCalcValues *cv)
              || !CanStealItem(cv->battlerAtk, battlerDef, gBattleMons[battlerDef].item))
                 continue;
 
-            if (cv->abilities[battlerDef] == ABILITY_STICKY_HOLD)
+            if (IsAbilityOrGodIII(cv->abilities[battlerDef], ABILITY_STICKY_HOLD))
             {
                 BattleScriptCall(BattleScript_StickyHoldActivatesRet);
                 gBattlerAbility = battlerDef;
@@ -4889,7 +4889,7 @@ static enum MoveEndResult MoveEndPickpocket(struct BattleCalcValues *cv)
                 gBattlerTarget = gBattlerAbility = battlerDef;
                 gEffectBattler = cv->battlerAtk;
                 // Battle scripting is super brittle so we shall do the item exchange now (if possible)
-                if (abilityAtk != ABILITY_STICKY_HOLD)
+                if (!IsAbilityOrGodIII(abilityAtk, ABILITY_STICKY_HOLD))
                 {
                     if (originalAttackerOnField)
                     {
